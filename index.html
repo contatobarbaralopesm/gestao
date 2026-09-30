@@ -673,9 +673,20 @@ function creditBillingMK(d){
   if(day<=2){const p=new Date(dt.getFullYear(),dt.getMonth()-1,1);return `${p.getFullYear()}-${String(p.getMonth()+1).padStart(2,'0')}`;}
   return getMK(d);
 }
+function isBloqueado(t){return t.prod==='Previdência'&&t.cat==='Reserva';}
 function calcBal(txs){
   const b={debito:0,va:0,cultura:0,poupanca:0};
-  txs.forEach(t=>{if(t.type==='expense'&&isCredit(t))return;if(b[t.conta]!==undefined)b[t.conta]+=t.type==='income'?t.value:-t.value;});
+  txs.forEach(t=>{
+    if(t.type==='expense'&&isCredit(t))return;
+    if(t.type==='expense'&&isBloqueado(t))return; // Previdência: excluída de todos os saldos
+    if(t.type==='expense'&&t.prod==='Caixinha'&&t.cat==='Reserva'){
+      // Caixinha: desconta da conta de origem e adiciona à poupança
+      if(b[t.conta]!==undefined)b[t.conta]-=t.value;
+      b.poupanca+=t.value;
+      return;
+    }
+    if(b[t.conta]!==undefined)b[t.conta]+=t.type==='income'?t.value:-t.value;
+  });
   return b;
 }
 function calcCredit(txs){return txs.filter(t=>t.type==='expense'&&isCredit(t)).reduce((s,t)=>s+t.value,0);}
